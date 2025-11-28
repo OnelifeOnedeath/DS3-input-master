@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using DS3InputMaster.ViewModels;
 using DS3InputMaster.Views;
 
 namespace DS3InputMaster
@@ -17,10 +16,7 @@ namespace DS3InputMaster
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new MainWindow
-                {
-                    DataContext = new MainViewModel()
-                };
+                desktop.MainWindow = new MainWindow();
             }
 
             base.OnFrameworkInitializationCompleted();
