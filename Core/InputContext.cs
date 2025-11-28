@@ -1,6 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using DS3InputMaster.Configuration;
+using DS3InputMaster.Core.Emulation;
+using DS3InputMaster.Core.InputCapture;
+using DS3InputMaster.Core.Interpretation;
+using DS3InputMaster.Models;
+using DS3InputMaster.Models.InputProfiles;
 
 namespace DS3InputMaster.Core
 {
@@ -13,76 +19,203 @@ namespace DS3InputMaster.Core
         private readonly GameStateDetector _gameStateDetector;
         private readonly ProfileManager _profileManager;
         private readonly InputInterpreter _inputInterpreter;
+        private readonly GamepadEmulator _gamepadEmulator;
         
+        private bool _isRunning;
+        private GameState _currentGameState;
+
         // События для UI и отладки
         public event Action<InputEvent> InputProcessed;
         public event Action<GameState> GameStateChanged;
-        
-        public InputContext()
+        public event Action<string> ErrorOccurred;
+
+        public InputContext(ProfileManager profileManager)
         {
-            _profileManager = new ProfileManager();
+            _profileManager = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
+            
             _gameStateDetector = new GameStateDetector();
             _inputInterpreter = new InputInterpreter();
+            _gamepadEmulator = new GamepadEmulator();
             _inputCapture = new InputCapture();
-            
+
             SetupEventHandlers();
         }
-        
+
         private void SetupEventHandlers()
         {
             _inputCapture.RawInputReceived += OnRawInputReceived;
             _gameStateDetector.StateChanged += OnGameStateChanged;
+            _profileManager.ProfileChanged += OnProfileChanged;
         }
-        
+
+        public void Start()
+        {
+            if (_isRunning) return;
+
+            try
+            {
+                _gameStateDetector.StartDetection();
+                _inputCapture.StartCapture();
+                _gamepadEmulator.StartEmulation();
+                
+                _isRunning = true;
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Ошибка запуска: {ex.Message}");
+            }
+        }
+
+        public void Stop()
+        {
+            if (!_isRunning) return;
+
+            try
+            {
+                _inputCapture.StopCapture();
+                _gameStateDetector.StopDetection();
+                _gamepadEmulator.StopEmulation();
+                
+                _isRunning = false;
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Ошибка остановки: {ex.Message}");
+            }
+        }
+
         private void OnRawInputReceived(RawInputData rawInput)
         {
-            // Определяем контекст игры
-            var gameState = _gameStateDetector.CurrentState;
-            var activeProfile = _profileManager.GetActiveProfile();
-            
-            // Интерпретируем физический ввод в игровое намерение
-            var playerIntent = _inputInterpreter.Interpret(rawInput, gameState, activeProfile);
-            
-            // Преобразуем в эмуляцию геймпада
-            var gamepadOutput = GamepadEmulator.ConvertToGamepad(playerIntent);
-            
-            // Отправляем в игру
-            GamepadEmulator.SendInput(gamepadOutput);
-            
-            InputProcessed?.Invoke(new InputEvent(rawInput, playerIntent, gamepadOutput));
+            if (!_isRunning) return;
+
+            try
+            {
+                // Определяем контекст игры
+                var gameState = _currentGameState;
+                var activeProfile = _profileManager.ActiveProfile;
+
+                // Интерпретируем физический ввод в игровое намерение
+                var playerIntent = _inputInterpreter.Interpret(rawInput, gameState, activeProfile);
+
+                // Преобразуем в эмуляцию геймпада
+                var gamepadOutput = new GamepadOutput
+                {
+                    Movement = playerIntent.Movement,
+                    Camera = playerIntent.Camera,
+                    Actions = playerIntent.Actions
+                };
+
+                // Отправляем в игру
+                _gamepadEmulator.UpdateState(gamepadOutput);
+
+                InputProcessed?.Invoke(new InputEvent(rawInput, playerIntent, gamepadOutput));
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Ошибка обработки ввода: {ex.Message}");
+            }
         }
-        
+
         private void OnGameStateChanged(GameState newState)
         {
+            _currentGameState = newState;
             GameStateChanged?.Invoke(newState);
-            
+
             // Автоматически применяем соответствующий профиль
-            if (newState == GameState.InCombat)
-                _profileManager.ApplyProfile("Combat");
-            else if (newState == GameState.Exploring)
-                _profileManager.ApplyProfile("Exploration");
+            ApplyContextAwareProfile(newState);
         }
-        
-        public void ApplyProfile(string profileName)
+
+        private void OnProfileChanged(ControlProfile newProfile)
         {
-            _profileManager.ApplyProfile(profileName);
+            // Сбрасываем интерпретатор при смене профиля
+            _inputInterpreter.ResetHistory();
         }
-        
+
+        private void ApplyContextAwareProfile(GameState gameState)
+        {
+            string profileName = gameState switch
+            {
+                GameState.InCombat or GameState.BossFight => "PvP",
+                GameState.Aiming or GameState.BowAiming => "Magic",
+                GameState.Exploring => "Default",
+                _ => null
+            };
+
+            if (profileName != null && _profileManager.LoadedProfiles.ContainsKey(profileName))
+            {
+                _profileManager.ApplyProfile(profileName);
+            }
+        }
+
         public void CalibrateMouseSensitivity()
         {
-            // Метод для калибровки мыши под текущую аппаратную настройку
-            var calibrationData = MouseCalibrator.PerformCalibration();
-            _profileManager.UpdateActiveProfileSensitivity(calibrationData);
+            try
+            {
+                // Метод для калибровки мыши под текущую аппаратную настройку
+                var calibrationData = new MouseCalibrationData
+                {
+                    BaseSensitivity = 1.0f,
+                    MeasuredDpi = 800, // Примерное значение
+                    UserPreferenceMultiplier = 1.0f
+                };
+
+                _profileManager.UpdateActiveProfileSensitivity(calibrationData);
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Ошибка калибровки: {ex.Message}");
+            }
         }
-        
+
+        public void ApplyCustomProfile(string profileName)
+        {
+            try
+            {
+                _profileManager.ApplyProfile(profileName);
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Ошибка применения профиля: {ex.Message}");
+            }
+        }
+
+        public async Task SaveCurrentProfileAsync(string profileName = null)
+        {
+            try
+            {
+                var profile = _profileManager.ActiveProfile;
+                var name = profileName ?? profile.Name;
+                
+                await _profileManager.SaveProfileAsync(profile, name);
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Ошибка сохранения профиля: {ex.Message}");
+            }
+        }
+
+        public bool IsRunning => _isRunning;
+        public GameState CurrentGameState => _currentGameState;
+        public ControlProfile ActiveProfile => _profileManager.ActiveProfile;
+        public IEnumerable<string> AvailableProfiles => _profileManager.AvailableProfileNames;
+
         public void Dispose()
         {
-            _inputCapture.Dispose();
-            _gameStateDetector.Dispose();
+            Stop();
+            
+            _inputCapture?.Dispose();
+            _gameStateDetector?.Dispose();
+            _gamepadEmulator?.Dispose();
         }
     }
-    
+
     // Вспомогательные структуры для типизации
     public record InputEvent(RawInputData RawInput, PlayerIntent Intent, GamepadOutput Output);
-    public record PlayerIntent(Vector2 Movement, Vector2 Camera, IReadOnlyList<GameAction> Actions);
+    
+    public record PlayerIntent
+    {
+        public Vector2 Movement { get; init; } = Vector2.Zero;
+        public Vector2 Camera { get; init; } = Vector2.Zero;
+        public IReadOnlyList<GameAction> Actions { get; init; } = Array.Empty<GameAction>();
+    }
 }
