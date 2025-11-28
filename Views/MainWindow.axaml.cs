@@ -4,7 +4,7 @@ using Avalonia.Markup.Xaml;
 
 namespace DS3InputMaster.Views
 {
-    public class MainWindow : Window 
+    public class MainWindow : Window
     {
         public MainWindow()
         {
