@@ -5,7 +5,7 @@ using DS3InputMaster.Views;
 
 namespace DS3InputMaster
 {
-    public class App : Application 
+    public class App : Application
     {
         public override void Initialize()
         {
