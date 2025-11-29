@@ -205,5 +205,12 @@ namespace DS3InputMaster.Core
         public Vector2 Movement { get; init; } = Vector2.Zero;
         public Vector2 Camera { get; init; } = Vector2.Zero;
         public IReadOnlyList<GameAction> Actions { get; init; } = Array.Empty<GameAction>();
+
+        public PlayerIntent(Vector2 movement, Vector2 camera, IReadOnlyList<GameAction> actions)
+        {
+            Movement = movement;
+            Camera = camera;
+            Actions = actions;
+        }
     }
 }
