@@ -1,6 +1,5 @@
 using System;
 using System.Threading;
-using System.Threading.Tasks;
 using WindowsInput;
 using WindowsInput.Native;
 
@@ -8,6 +7,7 @@ namespace DS3InputMaster.Core.Emulation
 {
     public class GamepadEmulator : IDisposable
     {
+        private readonly InputSimulator _inputSimulator = new InputSimulator();
         private Thread _emulationThread;
         private bool _isRunning;
         private GamepadOutput _currentOutput;
@@ -166,19 +166,18 @@ namespace DS3InputMaster.Core.Emulation
         public float X { get; set; }
         public float Y { get; set; }
 
-        // ДОБАВЛЕННЫЙ КОНСТРУКТОР
         public Vector2(float x, float y)
         {
             X = x;
             Y = y;
         }
 
-        public static Vector2 Zero => new Vector2 { X = 0, Y = 0 };
+        public static Vector2 Zero => new Vector2(0, 0);
 
         public Vector2 Normalized()
         {
             var length = (float)Math.Sqrt(X * X + Y * Y);
-            return length > 0 ? new Vector2 { X = X / length, Y = Y / length } : Zero;
+            return length > 0 ? new Vector2(X / length, Y / length) : Zero;
         }
     }
 }
