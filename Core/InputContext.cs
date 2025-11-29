@@ -1,216 +1,183 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using DS3InputMaster.Configuration;
-using DS3InputMaster.Core.Emulation;
-using DS3InputMaster.Core.Interpretation;
-using DS3InputMaster.Models;
-using DS3InputMaster.Models.InputProfiles;
+using System.Threading;
+using WindowsInput;
+using WindowsInput.Native;
 
-namespace DS3InputMaster.Core
+namespace DS3InputMaster.Core.Emulation
 {
-    public class InputContext : IDisposable
+    public class GamepadEmulator : IDisposable
     {
-        private readonly InputCapture.InputCapture _inputCapture;
-        private readonly GameStateDetector _gameStateDetector;
-        private readonly ProfileManager _profileManager;
-        private readonly InputInterpreter _inputInterpreter;
-        private readonly GamepadEmulator _gamepadEmulator;
-        
+        private readonly InputSimulator _inputSimulator = new InputSimulator();
+        private Thread _emulationThread;
         private bool _isRunning;
-        private GameState _currentGameState;
+        private GamepadOutput _currentOutput;
+        private readonly object _lockObject = new object();
 
-        public event Action<InputEvent> InputProcessed;
-        public event Action<GameState> GameStateChanged;
-        public event Action<string> ErrorOccurred;
-
-        public InputContext(ProfileManager profileManager)
-        {
-            _profileManager = profileManager ?? throw new ArgumentNullException(nameof(profileManager));
-            
-            _gameStateDetector = new GameStateDetector();
-            _inputInterpreter = new InputInterpreter();
-            _gamepadEmulator = new GamepadEmulator();
-            _inputCapture = new InputCapture.InputCapture();
-
-            SetupEventHandlers();
-        }
-
-        private void SetupEventHandlers()
-        {
-            _inputCapture.RawInputReceived += OnRawInputReceived;
-            _gameStateDetector.StateChanged += OnGameStateChanged;
-            _profileManager.ProfileChanged += OnProfileChanged;
-        }
-
-        public void Start()
+        public void StartEmulation()
         {
             if (_isRunning) return;
+            
+            _isRunning = true;
+            _emulationThread = new Thread(EmulationLoop);
+            _emulationThread.IsBackground = true;
+            _emulationThread.Start();
+        }
 
-            try
+        public void StopEmulation()
+        {
+            _isRunning = false;
+            _emulationThread?.Join(1000);
+        }
+
+        public void UpdateState(GamepadOutput output)
+        {
+            lock (_lockObject)
             {
-                _gameStateDetector.StartDetection();
-                _inputCapture.StartCapture();
-                _gamepadEmulator.StartEmulation();
-                
-                _isRunning = true;
-            }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke($"Ошибка запуска: {ex.Message}");
+                _currentOutput = output;
             }
         }
 
-        public void Stop()
+        private void EmulationLoop()
         {
-            if (!_isRunning) return;
-
-            try
+            while (_isRunning)
             {
-                _inputCapture.StopCapture();
-                _gameStateDetector.StopDetection();
-                _gamepadEmulator.StopEmulation();
-                
-                _isRunning = false;
-            }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke($"Ошибка остановки: {ex.Message}");
-            }
-        }
-
-        private void OnRawInputReceived(InputCapture.RawInputData rawInput)
-        {
-            if (!_isRunning) return;
-
-            try
-            {
-                var gameState = _currentGameState;
-                var activeProfile = _profileManager.ActiveProfile;
-
-                var playerIntent = _inputInterpreter.Interpret(rawInput, gameState, activeProfile);
-
-                var gamepadOutput = new GamepadOutput
+                try
                 {
-                    Movement = playerIntent.Movement,
-                    Camera = playerIntent.Camera,
-                    Actions = playerIntent.Actions
-                };
+                    GamepadOutput output;
+                    lock (_lockObject)
+                    {
+                        output = _currentOutput;
+                    }
 
-                _gamepadEmulator.UpdateState(gamepadOutput);
-
-                InputProcessed?.Invoke(new InputEvent(rawInput, playerIntent, gamepadOutput));
-            }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke($"Ошибка обработки ввода: {ex.Message}");
-            }
-        }
-
-        private void OnGameStateChanged(GameState newState)
-        {
-            _currentGameState = newState;
-            GameStateChanged?.Invoke(newState);
-
-            ApplyContextAwareProfile(newState);
-        }
-
-        private void OnProfileChanged(ControlProfile newProfile)
-        {
-            _inputInterpreter.ResetHistory();
-        }
-
-        private void ApplyContextAwareProfile(GameState gameState)
-        {
-            string profileName = gameState switch
-            {
-                GameState.InCombat or GameState.BossFight => "PvP",
-                GameState.Aiming or GameState.BowAiming => "Magic",
-                GameState.Exploring => "Default",
-                _ => null
-            };
-
-            if (profileName != null && _profileManager.LoadedProfiles.ContainsKey(profileName))
-            {
-                _profileManager.ApplyProfile(profileName);
-            }
-        }
-
-        public void CalibrateMouseSensitivity()
-        {
-            try
-            {
-                var calibrationData = new Configuration.MouseCalibrationData
+                    if (output != null)
+                    {
+                        EmulateGamepad(output);
+                    }
+                    Thread.Sleep(16);
+                }
+                catch (ThreadAbortException)
                 {
-                    BaseSensitivity = 1.0f,
-                    MeasuredDpi = 800,
-                    UserPreferenceMultiplier = 1.0f
-                };
-
-                _profileManager.UpdateActiveProfileSensitivity(calibrationData);
-            }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke($"Ошибка калибровки: {ex.Message}");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    // Log error
+                }
             }
         }
 
-        public void ApplyCustomProfile(string profileName)
+        private void EmulateGamepad(GamepadOutput output)
         {
-            try
+            // Emulate movement as WASD or arrow keys
+            if (output.Movement.X > 0.1f)
+                _inputSimulator.Keyboard.KeyDown(VirtualKeyCode.VK_D);
+            else
+                _inputSimulator.Keyboard.KeyUp(VirtualKeyCode.VK_D);
+
+            if (output.Movement.X < -0.1f)
+                _inputSimulator.Keyboard.KeyDown(VirtualKeyCode.VK_A);
+            else
+                _inputSimulator.Keyboard.KeyUp(VirtualKeyCode.VK_A);
+
+            if (output.Movement.Y > 0.1f)
+                _inputSimulator.Keyboard.KeyDown(VirtualKeyCode.VK_W);
+            else
+                _inputSimulator.Keyboard.KeyUp(VirtualKeyCode.VK_W);
+
+            if (output.Movement.Y < -0.1f)
+                _inputSimulator.Keyboard.KeyDown(VirtualKeyCode.VK_S);
+            else
+                _inputSimulator.Keyboard.KeyUp(VirtualKeyCode.VK_S);
+
+            // Emulate actions
+            foreach (var action in output.Actions)
             {
-                _profileManager.ApplyProfile(profileName);
-            }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke($"Ошибка применения профиля: {ex.Message}");
+                EmulateAction(action);
             }
         }
 
-        public async Task SaveCurrentProfileAsync(string profileName = null)
+        private void EmulateAction(GameAction action)
         {
-            try
+            switch (action)
             {
-                var profile = _profileManager.ActiveProfile;
-                var name = profileName ?? profile.Name;
-                
-                await _profileManager.SaveProfileAsync(profile, name);
-            }
-            catch (Exception ex)
-            {
-                ErrorOccurred?.Invoke($"Ошибка сохранения профиля: {ex.Message}");
+                case GameAction.LightAttack:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_J);
+                    break;
+                case GameAction.HeavyAttack:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_K);
+                    break;
+                case GameAction.Block:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_L);
+                    break;
+                case GameAction.Parry:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_O);
+                    break;
+                case GameAction.UseItem:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_Q);
+                    break;
+                case GameAction.Interact:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_E);
+                    break;
+                case GameAction.Roll:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_SPACE);
+                    break;
+                case GameAction.Jump:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_SPACE);
+                    break;
+                case GameAction.Menu:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.ESCAPE);
+                    break;
+                case GameAction.SwitchSpell:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_X);
+                    break;
+                case GameAction.SwitchItem:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_Z);
+                    break;
+                case GameAction.TwoHand:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_Y);
+                    break;
+                case GameAction.LockOn:
+                    _inputSimulator.Keyboard.KeyPress(VirtualKeyCode.VK_F);
+                    break;
+                case GameAction.MoveForward:
+                case GameAction.MoveBackward:
+                case GameAction.MoveLeft:
+                case GameAction.MoveRight:
+                    // These are handled by movement system
+                    break;
             }
         }
-
-        public bool IsRunning => _isRunning;
-        public GameState CurrentGameState => _currentGameState;
-        public ControlProfile ActiveProfile => _profileManager.ActiveProfile;
-        public IEnumerable<string> AvailableProfiles => _profileManager.AvailableProfileNames;
 
         public void Dispose()
         {
-            Stop();
-            
-            _inputCapture?.Dispose();
-            _gameStateDetector?.Dispose();
-            _gamepadEmulator?.Dispose();
+            StopEmulation();
         }
     }
 
-    public record InputEvent(InputCapture.RawInputData RawInput, PlayerIntent Intent, GamepadOutput Output);
-    
-    public record PlayerIntent
+    public class GamepadOutput
     {
-        public Vector2 Movement { get; init; } = Vector2.Zero;
-        public Vector2 Camera { get; init; } = Vector2.Zero;
-        public IReadOnlyList<GameAction> Actions { get; init; } = Array.Empty<GameAction>();
+        public Vector2 Movement { get; set; }
+        public Vector2 Camera { get; set; }
+        public GameAction[] Actions { get; set; } = Array.Empty<GameAction>();
+    }
 
-        public PlayerIntent(Vector2 movement, Vector2 camera, IReadOnlyList<GameAction> actions)
+    public struct Vector2
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+
+        public Vector2(float x, float y)
         {
-            Movement = movement;
-            Camera = camera;
-            Actions = actions;
+            X = x;
+            Y = y;
+        }
+
+        public static Vector2 Zero => new Vector2(0, 0);
+
+        public Vector2 Normalized()
+        {
+            var length = (float)Math.Sqrt(X * X + Y * Y);
+            return length > 0 ? new Vector2(X / length, Y / length) : Zero;
         }
     }
 }
