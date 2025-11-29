@@ -9,6 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Include="System" />
+    <Using Include="System.Collections.Generic" />
+    <Using Include="System.Drawing" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Threading.Tasks" />
+    <Using Include="WindowsInput" />
+    <Using Include="WindowsInput.Native" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaResource Include="App.axaml" />
     <AvaloniaResource Include="Views\MainWindow.axaml" />
   </ItemGroup>
