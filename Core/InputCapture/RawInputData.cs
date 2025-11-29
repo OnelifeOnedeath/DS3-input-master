@@ -1,8 +1,8 @@
+using System;
+using System.Drawing;
+
 namespace DS3InputMaster.Core.InputCapture
 {
-    /// <summary>
-    /// Сырые данные с физических устройств
-    /// </summary>
     public struct RawInputData
     {
         public KeyboardEvent Keyboard { get; set; }
