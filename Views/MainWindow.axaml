@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:DS3InputMaster.ViewModels"
+        x:DataType="vm:MainViewModel"
         Title="DS3 Input Master"
         MinWidth="600" MinHeight="400">
     
