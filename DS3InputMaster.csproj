@@ -13,8 +13,6 @@
     <Using Include="System.Linq" />
     <Using Include="System.Threading.Tasks" />
     <Using Include="System.Drawing" />
-    <Using Include="WindowsInput" />
-    <Using Include="WindowsInput.Native" />
     <Using Include="DS3InputMaster.Models" />
     <Using Include="DS3InputMaster.Models.InputProfiles" />
     <Using Include="DS3InputMaster.Core.InputCapture" />
