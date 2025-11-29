@@ -17,19 +17,21 @@
             <ScrollViewer Grid.Column="0" Margin="0,0,10,0">
                 <StackPanel Spacing="15">
                     <!-- Connection Status -->
-                    <GroupBox Header="Статус системы">
-                        <StackPanel Spacing="10">
+                    <StackPanel>
+                        <TextBlock Text="Статус системы" FontWeight="Bold"/>
+                        <StackPanel Spacing="10" Margin="0,5,0,0">
                             <CheckBox Content="Активировать систему управления" 
                                       IsChecked="{Binding IsCapturingInput}"/>
                             <TextBlock Text="{Binding CurrentGameState}" 
                                        FontWeight="Bold"
                                        Foreground="Green"/>
                         </StackPanel>
-                    </GroupBox>
+                    </StackPanel>
 
                     <!-- Profile Selection -->
-                    <GroupBox Header="Профили управления">
-                        <StackPanel Spacing="10">
+                    <StackPanel>
+                        <TextBlock Text="Профили управления" FontWeight="Bold"/>
+                        <StackPanel Spacing="10" Margin="0,5,0,0">
                             <ComboBox Items="{Binding AvailableProfiles}" 
                                       SelectedItem="{Binding SelectedProfile}"/>
                             <StackPanel Orientation="Horizontal" Spacing="5">
@@ -38,25 +40,28 @@
                                 <Button Content="Удалить" Command="{Binding DeleteProfileCommand}"/>
                             </StackPanel>
                         </StackPanel>
-                    </GroupBox>
+                    </StackPanel>
 
                     <!-- Quick Actions -->
-                    <GroupBox Header="Быстрые действия">
-                        <StackPanel Spacing="10">
+                    <StackPanel>
+                        <TextBlock Text="Быстрые действия" FontWeight="Bold"/>
+                        <StackPanel Spacing="10" Margin="0,5,0,0">
                             <Button Content="Калибровать мышь" Command="{Binding CalibrateCommand}"/>
                             <Button Content="Запустить систему" Command="{Binding StartCommand}"/>
                             <Button Content="Остановить систему" Command="{Binding StopCommand}"/>
                         </StackPanel>
-                    </GroupBox>
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
 
             <!-- Right Panel - Log -->
-            <GroupBox Grid.Column="1" Header="Лог событий">
+            <StackPanel Grid.Column="1">
+                <TextBlock Text="Лог событий" FontWeight="Bold"/>
                 <ListBox Items="{Binding LogMessages}" 
                          Background="Transparent"
-                         BorderThickness="0"/>
-            </GroupBox>
+                         BorderThickness="0"
+                         Margin="0,5,0,0"/>
+            </StackPanel>
         </Grid>
 
         <!-- Footer -->
