@@ -141,7 +141,7 @@ namespace DS3InputMaster.Core
         {
             try
             {
-                var calibrationData = new MouseCalibrationData
+                var calibrationData = new Configuration.MouseCalibrationData
                 {
                     BaseSensitivity = 1.0f,
                     MeasuredDpi = 800,
@@ -205,12 +205,5 @@ namespace DS3InputMaster.Core
         public Vector2 Movement { get; init; } = Vector2.Zero;
         public Vector2 Camera { get; init; } = Vector2.Zero;
         public IReadOnlyList<GameAction> Actions { get; init; } = Array.Empty<GameAction>();
-    }
-
-    public class MouseCalibrationData
-    {
-        public float BaseSensitivity { get; set; } = 1.0f;
-        public float MeasuredDpi { get; set; }
-        public float UserPreferenceMultiplier { get; set; } = 1.0f;
     }
 }
