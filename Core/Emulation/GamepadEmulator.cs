@@ -167,6 +167,7 @@ namespace DS3InputMaster.Core.Emulation
         public float X { get; set; }
         public float Y { get; set; }
 
+        // ДОБАВЛЕННЫЙ КОНСТРУКТОР
         public Vector2(float x, float y)
         {
             X = x;
