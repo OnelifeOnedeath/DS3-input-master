@@ -11,12 +11,14 @@ namespace DS3InputMaster
         {
             try
             {
-                BuildAvaloniaApp()
-                    .StartWithClassicDesktopLifetime(args);
+                Console.WriteLine("Запуск Avalonia...");
+                var app = BuildAvaloniaApp();
+                app.StartWithClassicDesktopLifetime(args);
+                Console.WriteLine("Приложение завершено");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Ошибка: {ex}");
+                Console.WriteLine($"ОШИБКА: {ex}");
                 Console.ReadLine();
             }
         }
