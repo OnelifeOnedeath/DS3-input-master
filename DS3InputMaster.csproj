@@ -8,7 +8,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="GlobalUsings.cs" />
+    <Using Include="System" />
+    <Using Include="System.Collections.Generic" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Threading.Tasks" />
+    <Using Include="WindowsInput" />
+    <Using Include="WindowsInput.Native" />
+    <Using Include="DS3InputMaster.Models" />
+    <Using Include="DS3InputMaster.Models.InputProfiles" />
+    <Using Include="DS3InputMaster.Core.InputCapture" />
+    <Using Include="DS3InputMaster.Core.Emulation" />
+    <Using Include="DS3InputMaster.Core.Interpretation" />
+    <Using Include="DS3InputMaster.Utilities" />
   </ItemGroup>
 
   <ItemGroup>
