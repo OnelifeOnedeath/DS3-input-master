@@ -1,11 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using DS3InputMaster.Models;
 using DS3InputMaster.Models.InputProfiles;
 
 namespace DS3InputMaster.Core.Interpretation
 {
-    /// <summary>
-    /// Преобразователь сырого ввода в игровые намерения с учетом контекста
-    /// </summary>
     public class InputInterpreter
     {
         private readonly InputHistory _history = new();
@@ -41,12 +41,16 @@ namespace DS3InputMaster.Core.Interpretation
             var camera = CalculateCamera(context);
             var actions = DetectActions(context);
 
-            return new PlayerIntent(movement, camera, actions);
+            return new PlayerIntent 
+            { 
+                Movement = movement, 
+                Camera = camera, 
+                Actions = actions 
+            };
         }
 
         private Vector2 CalculateMovement(InterpretationContext context)
         {
-            // Эмуляция аналогового движения на цифровых клавишах
             var movement = Vector2.Zero;
             var profile = context.Profile.Movement;
 
@@ -59,8 +63,7 @@ namespace DS3InputMaster.Core.Interpretation
             if (IsKeyPressed(context, GameAction.MoveRight))
                 movement.X += 1.0f;
 
-            // Применяем кривую отклика для плавности
-            return ApplyResponseCurve(movement.Normalized, profile.AnalogResponseCurve);
+            return ApplyResponseCurve(movement.Normalized(), profile.AnalogResponseCurve);
         }
 
         private Vector2 CalculateCamera(InterpretationContext context)
@@ -69,7 +72,9 @@ namespace DS3InputMaster.Core.Interpretation
             var profile = context.Profile.Mouse;
             var sensitivity = GetContextSensitivity(context.GameState, profile);
 
-            var cameraMovement = new Vector2(mouse.Movement.X, mouse.Movement.Y) * sensitivity;
+            var cameraMovement = new Vector2 { X = mouse.Movement.X, Y = mouse.Movement.Y };
+            cameraMovement.X *= sensitivity;
+            cameraMovement.Y *= sensitivity;
 
             if (profile.InvertY)
                 cameraMovement.Y = -cameraMovement.Y;
@@ -81,7 +86,6 @@ namespace DS3InputMaster.Core.Interpretation
         {
             var actions = new List<GameAction>();
 
-            // Проверяем все возможные действия из профиля
             foreach (var binding in context.Profile.Bindings.Actions)
             {
                 if (IsBindingActive(binding.Key, binding.Value, context))
@@ -90,7 +94,6 @@ namespace DS3InputMaster.Core.Interpretation
                 }
             }
 
-            // Специальные комбо-действия
             DetectComboActions(actions, context);
 
             return actions;
@@ -98,17 +101,14 @@ namespace DS3InputMaster.Core.Interpretation
 
         private bool IsBindingActive(GameAction action, InputBinding binding, InterpretationContext context)
         {
-            // Проверяем основную клавишу
             if (binding.PrimaryKey != VirtualKey.None && 
                 IsKeyActive(binding.PrimaryKey, binding.Modifiers, context))
                 return true;
 
-            // Проверяем дополнительную клавишу
             if (binding.SecondaryKey != VirtualKey.None && 
                 IsKeyActive(binding.SecondaryKey, binding.Modifiers, context))
                 return true;
 
-            // Проверяем кнопку мыши
             if (binding.MouseButton != MouseButton.None && 
                 IsMouseButtonActive(binding.MouseButton, context))
                 return true;
@@ -121,33 +121,62 @@ namespace DS3InputMaster.Core.Interpretation
             var keyEvent = context.InputHistory.GetRecentKeyEvent(key);
             if (keyEvent?.Action != KeyAction.Pressed) return false;
 
-            // Проверяем модификаторы
             return CheckModifiers(modifiers, context.RawInput.Keyboard);
         }
 
         private void DetectComboActions(List<GameAction> actions, InterpretationContext context)
         {
-            // Обнаружение быстрой атаки после переката
             if (actions.Contains(GameAction.Roll) && context.InputHistory.WasActionRecently(GameAction.LightAttack, 0.2f))
             {
                 actions.Add(GameAction.LightAttack);
             }
 
-            // Обнаружение парного окна
             if (actions.Contains(GameAction.Parry) && IsInParryWindow(context))
             {
                 actions.Add(GameAction.Parry);
             }
         }
 
-        // Вспомогательные методы...
-        private bool IsKeyPressed(InterpretationContext context, GameAction action) => false;
-        private Vector2 ApplyResponseCurve(Vector2 input, float curve) => input;
-        private Vector2 ApplySmoothing(Vector2 input, float smoothing, InputHistory history) => input;
-        private float GetContextSensitivity(GameState state, MouseSettings mouse) => 1.0f;
-        private bool IsMouseButtonActive(MouseButton button, InterpretationContext context) => false;
-        private bool CheckModifiers(InputModifier required, KeyboardEvent actual) => false;
-        private bool IsInParryWindow(InterpretationContext context) => false;
+        private bool IsKeyPressed(InterpretationContext context, GameAction action) 
+        {
+            var binding = context.Profile.Bindings.GetBinding(action);
+            return IsBindingActive(action, binding, context);
+        }
+
+        private Vector2 ApplyResponseCurve(Vector2 input, float curve) 
+        {
+            return input;
+        }
+
+        private Vector2 ApplySmoothing(Vector2 input, float smoothing, InputHistory history) 
+        {
+            return input;
+        }
+
+        private float GetContextSensitivity(GameState state, MouseSettings mouse) 
+        {
+            return state switch
+            {
+                GameState.Aiming => mouse.AimingSensitivity,
+                GameState.BowAiming => mouse.BowSensitivity,
+                _ => mouse.CameraSensitivity
+            };
+        }
+
+        private bool IsMouseButtonActive(MouseButton button, InterpretationContext context) 
+        {
+            return false;
+        }
+
+        private bool CheckModifiers(InputModifier required, KeyboardEvent actual) 
+        {
+            return false;
+        }
+
+        private bool IsInParryWindow(InterpretationContext context) 
+        {
+            return false;
+        }
     }
 
     public class InterpretationContext
