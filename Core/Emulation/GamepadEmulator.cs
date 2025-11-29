@@ -8,7 +8,6 @@ namespace DS3InputMaster.Core.Emulation
 {
     public class GamepadEmulator : IDisposable
     {
-        private readonly InputSimulator _inputSimulator = new InputSimulator();
         private Thread _emulationThread;
         private bool _isRunning;
         private GamepadOutput _currentOutput;
