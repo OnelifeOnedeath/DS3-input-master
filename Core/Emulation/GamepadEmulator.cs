@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -79,6 +80,15 @@ namespace DS3InputMaster.Core.Emulation
                     case GameAction.Jump:
                         _currentState.Buttons |= XInputButtons.A;
                         break;
+                    case GameAction.Sprint:
+                        _currentState.Buttons |= XInputButtons.LeftThumb;
+                        break;
+                    case GameAction.LockOn:
+                        _currentState.Buttons |= XInputButtons.RightThumb;
+                        break;
+                    case GameAction.Menu:
+                        _currentState.Buttons |= XInputButtons.Start;
+                        break;
                 }
             }
         }
@@ -143,15 +153,23 @@ namespace DS3InputMaster.Core.Emulation
 
         public void Reset()
         {
-            LeftThumbX = 0; LeftThumbY = 0; RightThumbX = 0; RightThumbY = 0;
-            LeftTrigger = 0; RightTrigger = 0; Buttons = 0;
+            LeftThumbX = 0;
+            LeftThumbY = 0;
+            RightThumbX = 0;
+            RightThumbY = 0;
+            LeftTrigger = 0;
+            RightTrigger = 0;
+            Buttons = 0;
         }
 
         public void CopyFrom(XInputState other)
         {
-            LeftThumbX = other.LeftThumbX; LeftThumbY = other.LeftThumbY;
-            RightThumbX = other.RightThumbX; RightThumbY = other.RightThumbY;
-            LeftTrigger = other.LeftTrigger; RightTrigger = other.RightTrigger;
+            LeftThumbX = other.LeftThumbX;
+            LeftThumbY = other.LeftThumbY;
+            RightThumbX = other.RightThumbX;
+            RightThumbY = other.RightThumbY;
+            LeftTrigger = other.LeftTrigger;
+            RightTrigger = other.RightTrigger;
             Buttons = other.Buttons;
         }
     }
@@ -159,9 +177,21 @@ namespace DS3InputMaster.Core.Emulation
     [Flags]
     public enum XInputButtons : ushort
     {
-        None = 0, DPadUp = 0x0001, DPadDown = 0x0002, DPadLeft = 0x0004, DPadRight = 0x0008,
-        Start = 0x0010, Back = 0x0020, LeftThumb = 0x0040, RightThumb = 0x0080,
-        LB = 0x0100, RB = 0x0200, A = 0x1000, B = 0x2000, X = 0x4000, Y = 0x8000
+        None = 0,
+        DPadUp = 0x0001,
+        DPadDown = 0x0002,
+        DPadLeft = 0x0004,
+        DPadRight = 0x0008,
+        Start = 0x0010,
+        Back = 0x0020,
+        LeftThumb = 0x0040,
+        RightThumb = 0x0080,
+        LB = 0x0100,
+        RB = 0x0200,
+        A = 0x1000,
+        B = 0x2000,
+        X = 0x4000,
+        Y = 0x8000
     }
 
     public class GamepadOutput
@@ -177,7 +207,9 @@ namespace DS3InputMaster.Core.Emulation
     {
         public float X { get; set; }
         public float Y { get; set; }
+        
         public static Vector2 Zero => new Vector2 { X = 0, Y = 0 };
+        
         public Vector2 Normalized()
         {
             var length = (float)Math.Sqrt(X * X + Y * Y);
