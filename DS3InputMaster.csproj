@@ -13,8 +13,6 @@
     <Using Include="System.Linq" />
     <Using Include="System.Threading.Tasks" />
     <Using Include="System.Drawing" />
-    <Using Include="WindowsInput" />
-    <Using Include="WindowsInput.Native" />
     <Using Include="DS3InputMaster.Models" />
     <Using Include="DS3InputMaster.Models.InputProfiles" />
     <Using Include="DS3InputMaster.Core.InputCapture" />
@@ -34,7 +32,6 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.2" />
     <PackageReference Include="Avalonia.ReactiveUI" Version="11.0.2" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.0.2" />
-    <PackageReference Include="WindowsInput" Version="6.2.1" />
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
   </ItemGroup>
 </Project>
