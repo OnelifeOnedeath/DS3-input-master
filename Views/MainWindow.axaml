@@ -32,7 +32,7 @@
                     <StackPanel>
                         <TextBlock Text="Профили управления" FontWeight="Bold"/>
                         <StackPanel Spacing="10" Margin="0,5,0,0">
-                            <ComboBox Items="{Binding AvailableProfiles}" 
+                            <ComboBox ItemsSource="{Binding AvailableProfiles}" 
                                       SelectedItem="{Binding SelectedProfile}"/>
                             <StackPanel Orientation="Horizontal" Spacing="5">
                                 <Button Content="Создать" Command="{Binding CreateProfileCommand}"/>
@@ -57,7 +57,7 @@
             <!-- Right Panel - Log -->
             <StackPanel Grid.Column="1">
                 <TextBlock Text="Лог событий" FontWeight="Bold"/>
-                <ListBox Items="{Binding LogMessages}" 
+                <ListBox ItemsSource="{Binding LogMessages}" 
                          Background="Transparent"
                          BorderThickness="0"
                          Margin="0,5,0,0"/>
