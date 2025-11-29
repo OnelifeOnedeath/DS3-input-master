@@ -41,27 +41,22 @@ namespace DS3InputMaster.Core.Interpretation
             var camera = CalculateCamera(context);
             var actions = DetectActions(context);
 
-            return new PlayerIntent 
-            { 
-                Movement = movement, 
-                Camera = camera, 
-                Actions = actions 
-            };
+            return new PlayerIntent(movement, camera, actions);
         }
 
         private Vector2 CalculateMovement(InterpretationContext context)
         {
-            var movement = Vector2.Zero;
+            var movement = new Vector2(0, 0);
             var profile = context.Profile.Movement;
 
             if (IsKeyPressed(context, GameAction.MoveForward))
-                movement.Y += 1.0f;
+                movement = new Vector2(movement.X, movement.Y + 1.0f);
             if (IsKeyPressed(context, GameAction.MoveBackward))
-                movement.Y -= 1.0f;
+                movement = new Vector2(movement.X, movement.Y - 1.0f);
             if (IsKeyPressed(context, GameAction.MoveLeft))
-                movement.X -= 1.0f;
+                movement = new Vector2(movement.X - 1.0f, movement.Y);
             if (IsKeyPressed(context, GameAction.MoveRight))
-                movement.X += 1.0f;
+                movement = new Vector2(movement.X + 1.0f, movement.Y);
 
             return ApplyResponseCurve(movement.Normalized(), profile.AnalogResponseCurve);
         }
@@ -72,12 +67,14 @@ namespace DS3InputMaster.Core.Interpretation
             var profile = context.Profile.Mouse;
             var sensitivity = GetContextSensitivity(context.GameState, profile);
 
-            var cameraMovement = new Vector2 { X = mouse.Movement.X, Y = mouse.Movement.Y };
-            cameraMovement.X *= sensitivity;
-            cameraMovement.Y *= sensitivity;
+            var cameraMovement = new Vector2(mouse.Movement.X, mouse.Movement.Y);
+            cameraMovement = new Vector2(
+                cameraMovement.X * sensitivity, 
+                cameraMovement.Y * sensitivity
+            );
 
             if (profile.InvertY)
-                cameraMovement.Y = -cameraMovement.Y;
+                cameraMovement = new Vector2(cameraMovement.X, -cameraMovement.Y);
 
             return ApplySmoothing(cameraMovement, profile.Smoothing, context.InputHistory);
         }
@@ -119,7 +116,7 @@ namespace DS3InputMaster.Core.Interpretation
         private bool IsKeyActive(VirtualKey key, InputModifier modifiers, InterpretationContext context)
         {
             var keyEvent = context.InputHistory.GetRecentKeyEvent(key);
-            if (keyEvent?.Action != KeyAction.Pressed) return false;
+            if (keyEvent.Action != KeyAction.Pressed) return false;
 
             return CheckModifiers(modifiers, context.RawInput.Keyboard);
         }
@@ -192,7 +189,7 @@ namespace DS3InputMaster.Core.Interpretation
     {
         public void AddInput(RawInputData input) { }
         public void Clear() { }
-        public KeyboardEvent GetRecentKeyEvent(VirtualKey key) => new();
+        public KeyboardEvent GetRecentKeyEvent(VirtualKey key) => new KeyboardEvent();
         public bool WasActionRecently(GameAction action, float seconds) => false;
     }
 }
