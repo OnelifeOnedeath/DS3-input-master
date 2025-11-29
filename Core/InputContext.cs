@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using DS3InputMaster.Configuration;
 using DS3InputMaster.Core.Emulation;
 using DS3InputMaster.Core.Interpretation;
@@ -111,6 +112,7 @@ namespace DS3InputMaster.Core
         {
             _currentGameState = newState;
             GameStateChanged?.Invoke(newState);
+
             ApplyContextAwareProfile(newState);
         }
 
@@ -124,7 +126,7 @@ namespace DS3InputMaster.Core
             string profileName = gameState switch
             {
                 GameState.InCombat or GameState.BossFight => "PvP",
-                GameState.Aiming or GameState.BowAiming => "Magic", 
+                GameState.Aiming or GameState.BowAiming => "Magic",
                 GameState.Exploring => "Default",
                 _ => null
             };
@@ -135,6 +137,57 @@ namespace DS3InputMaster.Core
             }
         }
 
+        public void CalibrateMouseSensitivity()
+        {
+            try
+            {
+                var calibrationData = new MouseCalibrationData
+                {
+                    BaseSensitivity = 1.0f,
+                    MeasuredDpi = 800,
+                    UserPreferenceMultiplier = 1.0f
+                };
+
+                _profileManager.UpdateActiveProfileSensitivity(calibrationData);
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Ошибка калибровки: {ex.Message}");
+            }
+        }
+
+        public void ApplyCustomProfile(string profileName)
+        {
+            try
+            {
+                _profileManager.ApplyProfile(profileName);
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Ошибка применения профиля: {ex.Message}");
+            }
+        }
+
+        public async Task SaveCurrentProfileAsync(string profileName = null)
+        {
+            try
+            {
+                var profile = _profileManager.ActiveProfile;
+                var name = profileName ?? profile.Name;
+                
+                await _profileManager.SaveProfileAsync(profile, name);
+            }
+            catch (Exception ex)
+            {
+                ErrorOccurred?.Invoke($"Ошибка сохранения профиля: {ex.Message}");
+            }
+        }
+
+        public bool IsRunning => _isRunning;
+        public GameState CurrentGameState => _currentGameState;
+        public ControlProfile ActiveProfile => _profileManager.ActiveProfile;
+        public IEnumerable<string> AvailableProfiles => _profileManager.AvailableProfileNames;
+
         public void Dispose()
         {
             Stop();
@@ -143,17 +196,21 @@ namespace DS3InputMaster.Core
             _gameStateDetector?.Dispose();
             _gamepadEmulator?.Dispose();
         }
-
-        public bool IsRunning => _isRunning;
-        public GameState CurrentGameState => _currentGameState;
-        public ControlProfile ActiveProfile => _profileManager.ActiveProfile;
     }
 
     public record InputEvent(InputCapture.RawInputData RawInput, PlayerIntent Intent, GamepadOutput Output);
+    
     public record PlayerIntent
     {
         public Vector2 Movement { get; init; } = Vector2.Zero;
         public Vector2 Camera { get; init; } = Vector2.Zero;
         public IReadOnlyList<GameAction> Actions { get; init; } = Array.Empty<GameAction>();
+    }
+
+    public class MouseCalibrationData
+    {
+        public float BaseSensitivity { get; set; } = 1.0f;
+        public float MeasuredDpi { get; set; }
+        public float UserPreferenceMultiplier { get; set; } = 1.0f;
     }
 }
