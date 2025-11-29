@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DS3InputMaster.Models;
 using DS3InputMaster.Models.InputProfiles;
+using DS3InputMaster.Core.Emulation;
 
 namespace DS3InputMaster.Core.Interpretation
 {
@@ -41,33 +42,24 @@ namespace DS3InputMaster.Core.Interpretation
             var camera = CalculateCamera(context);
             var actions = DetectActions(context);
 
-            // 🔥 ВАРИАНТ 1: Если PlayerIntent имеет свойства
-            var intent = new PlayerIntent();
-            intent.Movement = movement;
-            intent.Camera = camera;
-            intent.Actions = actions;
-            return intent;
-
-            // 🔥 ВАРИАНТ 2: Если PlayerIntent имеет конструктор с параметрами
-            // return new PlayerIntent(movement, camera, actions);
+            return new PlayerIntent(movement, camera, actions);
         }
 
         private Vector2 CalculateMovement(InterpretationContext context)
         {
-            // 🔥 УНИВЕРСАЛЬНОЕ СОЗДАНИЕ Vector2
-            var movement = CreateVector2(0, 0);
+            var movement = Vector2.Zero;
             var profile = context.Profile.Movement;
 
             if (IsKeyPressed(context, GameAction.MoveForward))
-                movement = CreateVector2(movement.X, movement.Y + 1.0f);
+                movement = new Vector2(movement.X, movement.Y + 1.0f);
             if (IsKeyPressed(context, GameAction.MoveBackward))
-                movement = CreateVector2(movement.X, movement.Y - 1.0f);
+                movement = new Vector2(movement.X, movement.Y - 1.0f);
             if (IsKeyPressed(context, GameAction.MoveLeft))
-                movement = CreateVector2(movement.X - 1.0f, movement.Y);
+                movement = new Vector2(movement.X - 1.0f, movement.Y);
             if (IsKeyPressed(context, GameAction.MoveRight))
-                movement = CreateVector2(movement.X + 1.0f, movement.Y);
+                movement = new Vector2(movement.X + 1.0f, movement.Y);
 
-            return ApplyResponseCurve(NormalizeVector(movement), profile.AnalogResponseCurve);
+            return ApplyResponseCurve(movement.Normalized(), profile.AnalogResponseCurve);
         }
 
         private Vector2 CalculateCamera(InterpretationContext context)
@@ -76,31 +68,16 @@ namespace DS3InputMaster.Core.Interpretation
             var profile = context.Profile.Mouse;
             var sensitivity = GetContextSensitivity(context.GameState, profile);
 
-            // 🔥 УНИВЕРСАЛЬНОЕ СОЗДАНИЕ Vector2
-            var cameraMovement = CreateVector2(mouse.Movement.X, mouse.Movement.Y);
-            cameraMovement = CreateVector2(
+            var cameraMovement = new Vector2(mouse.Movement.X, mouse.Movement.Y);
+            cameraMovement = new Vector2(
                 cameraMovement.X * sensitivity, 
                 cameraMovement.Y * sensitivity
             );
 
             if (profile.InvertY)
-                cameraMovement = CreateVector2(cameraMovement.X, -cameraMovement.Y);
+                cameraMovement = new Vector2(cameraMovement.X, -cameraMovement.Y);
 
             return ApplySmoothing(cameraMovement, profile.Smoothing, context.InputHistory);
-        }
-
-        private Vector2 CreateVector2(float x, float y)
-        {
-            return new Vector2 { X = x, Y = y };
-            
-        }
-
-        private Vector2 NormalizeVector(Vector2 vector)
-        {
-            var length = (float)Math.Sqrt(vector.X * vector.X + vector.Y * vector.Y);
-            if (length > 0)
-                return CreateVector2(vector.X / length, vector.Y / length);
-            return vector;
         }
 
         private IReadOnlyList<GameAction> DetectActions(InterpretationContext context)
@@ -215,16 +192,5 @@ namespace DS3InputMaster.Core.Interpretation
         public void Clear() { }
         public KeyboardEvent GetRecentKeyEvent(VirtualKey key) => new KeyboardEvent();
         public bool WasActionRecently(GameAction action, float seconds) => false;
-    }
-
-    public static class Vector2Helper
-    {
-        public static Vector2 Create(float x, float y)
-        {
-            var vector = new Vector2();
-            typeof(Vector2).GetProperty("X")?.SetValue(vector, x);
-            typeof(Vector2).GetProperty("Y")?.SetValue(vector, y);
-            return vector;
-        }
     }
 }
