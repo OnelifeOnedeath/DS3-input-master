@@ -12,6 +12,7 @@
     <Using Include="System.Collections.Generic" />
     <Using Include="System.Linq" />
     <Using Include="System.Threading.Tasks" />
+    <Using Include="System.Drawing" />
     <Using Include="WindowsInput" />
     <Using Include="WindowsInput.Native" />
     <Using Include="DS3InputMaster.Models" />
